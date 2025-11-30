@@ -19,15 +19,42 @@ interface GameBoardProps {
   buildOptions?: any;
   onBuildOptionSelected?: (option: any) => void;
   actionChoices?: any;
+  serverError?: { message: string } | null;
+  onServerErrorClose?: () => void;
 }
 
-export function GameBoard({ gameState, playerNumber, sendAction, onRestart, onBackToMenu, buildOptions, actionChoices }: GameBoardProps) {
+export function GameBoard({ gameState, playerNumber, sendAction, onRestart, onBackToMenu, buildOptions, actionChoices, serverError, onServerErrorClose }: GameBoardProps) {
   const [draggedCard, setDraggedCard] = useState<any>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragTurnState, setDragTurnState] = useState<any>(null);
   const [modalInfo, setModalInfo] = useState<any>(null);
   const [errorModal, setErrorModal] = useState<{ visible: boolean; title: string; message: string } | null>(null);
+  const [cardToReset, setCardToReset] = useState<{ rank: string; suit: string } | null>(null);
   const tableSectionRef = useRef<View>(null);
+
+  // Handle server errors
+  useEffect(() => {
+    if (serverError) {
+      console.log('[GameBoard] Received server error:', serverError.message);
+
+      // Trigger instant reset for the card that caused the error
+      if (cardToReset) {
+        console.log(`[GameBoard] Triggering instant reset for ${cardToReset.rank}${cardToReset.suit} due to server error`);
+        // Reset will happen via the triggerReset prop, then clear it after modal shows
+      }
+
+      setErrorModal({
+        visible: true,
+        title: 'Invalid Move',
+        message: serverError.message
+      });
+
+      // Clear card reset state after animation completes
+      setTimeout(() => {
+        setCardToReset(null);
+      }, 500); // Animation duration
+    }
+  }, [serverError, cardToReset]);
 
   // Handle build options when they arrive
   useEffect(() => {
@@ -139,6 +166,12 @@ export function GameBoard({ gameState, playerNumber, sendAction, onRestart, onBa
       return false;
     }
 
+    // Track this card as the one being dropped (for potential instant reset)
+    setCardToReset({
+      rank: draggedItem.card.rank,
+      suit: draggedItem.card.suit
+    });
+
     // Send raw drop event to server
     sendAction({
       type: 'card-drop',
@@ -178,7 +211,11 @@ export function GameBoard({ gameState, playerNumber, sendAction, onRestart, onBa
   const handleErrorModalClose = useCallback(() => {
     console.log(`[GameBoard] Error modal closed`);
     setErrorModal(null);
-  }, []);
+    // Clear server error if it's a server error
+    if (onServerErrorClose) {
+      onServerErrorClose();
+    }
+  }, [onServerErrorClose]);
 
   const handleFinalizeStack = useCallback((stackId: string) => {
     console.log(`[GameBoard] Finalizing stack:`, stackId);
@@ -415,6 +452,7 @@ export function GameBoard({ gameState, playerNumber, sendAction, onRestart, onBa
             onDragEnd={handleDragEnd}
             currentPlayer={playerNumber}
             tableCards={gameState.tableCards || []}
+            cardToReset={cardToReset}
           />
         </View>
         <View style={styles.playerCapturedArea}>

@@ -162,6 +162,7 @@ function validateBuildCreation(buildValue, gameState) {
 function determineActions(draggedItem, targetInfo, gameState) {
   // Removed verbose timestamp logging
   const actions = [];
+  let actionError = null; // Track specific error messages
   const { card: draggedCard } = draggedItem;
   const { tableCards, playerHands, playerCaptures, currentPlayer } = gameState;
   const playerHand = playerHands[currentPlayer];
@@ -217,7 +218,6 @@ function determineActions(draggedItem, targetInfo, gameState) {
     }
   } else if (draggedItem.source === 'captured') {
     // ===== CAPTURED CARD DROPS =====
-    console.log(`[SHARED_LOGIC] Captured card drop detected: ${draggedCard.rank}${draggedCard.suit} → ${targetInfo.type}`);
     // Captured cards can be used like hand cards for builds/captures
     // Fall through to use same logic as hand cards but without hand card checks
   } else if (draggedItem.source !== 'hand') {
@@ -301,8 +301,6 @@ function determineActions(draggedItem, targetInfo, gameState) {
         );
 
         if (!hasExistingBuild) {
-          // DEBUG: Log successful build detection
-          console.log(`[SHARED_LOGIC] Build detected: ${draggedValue}+${targetValue}=${targetValue + draggedValue}`);
           actions.push({
             type: 'build',
             label: `Build ${targetValue + draggedValue} (${draggedValue}+${targetValue})`,
@@ -367,8 +365,10 @@ function determineActions(draggedItem, targetInfo, gameState) {
       });
     } else if (gameState.round === 1 && hasActiveBuild) {
       console.error('[SHARED_LOGIC] Trail blocked: Round 1 with active build');
+      actionError = 'Cannot trail card during round 1 when you have an active build.';
     } else if (wouldCreateDuplicate) {
       console.error('[SHARED_LOGIC] Trail blocked: Would create duplicate loose card');
+      actionError = `Cannot trail: a ${draggedCard.rank} already exists as a loose card on the table.`;
     }
   }
 
@@ -378,19 +378,41 @@ function determineActions(draggedItem, targetInfo, gameState) {
     return {
       actions: [],
       requiresModal: false,
-      errorMessage: 'No valid actions available'
+      errorMessage: actionError || 'No valid actions available'
     };
   }
 
   if (actions.length === 1) {
     const action = actions[0];
-    if (action.type === 'trail' || action.type === 'capture') {
-      // Removed verbose auto-execute logging
+    if (action.type === 'trail') {
       return {
         actions,
         requiresModal: false,
         errorMessage: null
       };
+    } else if (action.type === 'capture') {
+      // Check for duplicate loose cards before auto-executing capture
+      const duplicateLooseCards = tableCards.filter(tableItem =>
+        tableItem.type === 'loose' &&
+        tableItem.rank &&
+        rankValue(tableItem.rank) === draggedValue
+      );
+
+      if (duplicateLooseCards.length >= 1) {
+        console.error(`[SHARED_LOGIC] Auto-capture blocked: ${duplicateLooseCards.length} loose ${draggedCard.rank} cards already exist on table`);
+        return {
+          actions: [],
+          requiresModal: false,
+          errorMessage: `Cannot trail loose card: ${draggedCard.rank} cards already exist on the table.`
+        };
+      } else {
+        console.log(`[SHARED_LOGIC] Auto-executing single capture: ${draggedCard.rank}${draggedCard.suit}`);
+        return {
+          actions,
+          requiresModal: false,
+          errorMessage: null
+        };
+      }
     }
   }
 

@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { memo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import DraggableCard from './DraggableCard';
 import { CardType } from './card';
 
@@ -12,6 +12,7 @@ interface PlayerHandProps {
   onDragMove?: (card: CardType, position: { x: number; y: number }) => void;
   currentPlayer: number;
   tableCards?: any[];
+  cardToReset?: { rank: string; suit: string } | null;
 }
 
 const PlayerHand = memo<PlayerHandProps>(({
@@ -22,7 +23,8 @@ const PlayerHand = memo<PlayerHandProps>(({
   onDragEnd,
   onDragMove,
   currentPlayer,
-  tableCards = []
+  tableCards = [],
+  cardToReset
 }) => {
   // Basic logic - can be enhanced later
   const canDragHandCards = isCurrent;
@@ -31,6 +33,11 @@ const PlayerHand = memo<PlayerHandProps>(({
     <View style={styles.playerHand}>
       {cards.map((card, index) => {
         const handKey = `hand-p${player}-${index}-${card.rank}-${card.suit}`;
+
+        // Check if this card should be reset due to server error
+        const shouldReset = Boolean(cardToReset &&
+          cardToReset.rank === card.rank &&
+          cardToReset.suit === card.suit);
 
         return (
           <DraggableCard
@@ -44,6 +51,7 @@ const PlayerHand = memo<PlayerHandProps>(({
             size="normal"
             currentPlayer={currentPlayer}
             source="hand"
+            triggerReset={shouldReset}
           />
         );
       })}

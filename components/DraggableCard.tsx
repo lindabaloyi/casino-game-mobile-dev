@@ -14,6 +14,7 @@ interface DraggableCardProps {
   source?: string;
   stackId?: string | null;
   dragZIndex?: number; // Custom z-index for dragged cards (defaults to 9999)
+  triggerReset?: boolean; // Trigger instant snap-back animation
 }
 
 const DraggableCard: React.FC<DraggableCardProps> = ({
@@ -27,7 +28,8 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   currentPlayer,
   source = 'hand',
   stackId = null,
-  dragZIndex = 9999
+  dragZIndex = 9999,
+  triggerReset = false
 }) => {
   const pan = useRef(new Animated.ValueXY()).current;
   const [hasStartedDrag, setHasStartedDrag] = useState(false);
@@ -244,6 +246,18 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       console.log(`[DraggableCard:DEBUG] 🎯 DRAG START: ${card.rank}${card.suit} now z-index ${dragZIndex} (overlay active)`);
     }
   }, [hasStartedDrag, card.rank, card.suit, dragZIndex]);
+
+  // Handle external trigger reset (server validation failures)
+  React.useEffect(() => {
+    if (triggerReset) {
+      console.log(`[DraggableCard] ⚡ INSTANT RESET triggered for ${card.rank}${card.suit}`);
+      // Cancel any ongoing animations and snap back immediately
+      pan.stopAnimation();
+      pan.setValue({ x: 0, y: 0 });
+      pan.flattenOffset();
+      setHasStartedDrag(false);
+    }
+  }, [triggerReset, pan, card.rank, card.suit]);
 
   return (
     <Animated.View

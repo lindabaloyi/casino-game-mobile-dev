@@ -25,6 +25,7 @@ export const useSocket = () => {
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
   const [buildOptions, setBuildOptions] = useState<any>(null);
   const [actionChoices, setActionChoices] = useState<any>(null);
+  const [error, setError] = useState<{ message: string } | null>(null);
 
   const socketInstance = useMemo(() => {
     console.log("[SOCKET] Creating connection to:", SOCKET_URL);
@@ -68,7 +69,7 @@ export const useSocket = () => {
 
     socketInstance.on('error', (error: { message: string }) => {
       console.log('[CLIENT] Server error:', error.message);
-      // Could show error modal here
+      setError(error);
     });
 
     socketInstance.on('disconnect', (reason) => {
@@ -158,5 +159,9 @@ export const useSocket = () => {
     setBuildOptions(null);
   };
 
-  return { gameState, playerNumber, sendAction, buildOptions, clearBuildOptions, actionChoices };
+  const clearError = () => {
+    setError(null);
+  };
+
+  return { gameState, playerNumber, sendAction, buildOptions, clearBuildOptions, actionChoices, error, clearError };
 };
