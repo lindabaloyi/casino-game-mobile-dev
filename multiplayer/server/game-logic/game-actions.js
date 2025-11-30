@@ -1,5 +1,5 @@
 // Stub implementations for game actions
-// These will be replaced with actual implementations
+// These wills be replaced with actual implementations
 
 const handleCreateStagingStack = (gameState, handCard, tableCard, playerIndex) => {
   console.log(`📦 [STAGING_STACK:CREATE] Player ${playerIndex} attempting to create staging stack: ${handCard.rank}${handCard.suit} + ${tableCard.rank}${tableCard.suit}`);
